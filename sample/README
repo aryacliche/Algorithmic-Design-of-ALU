@@ -1,0 +1,9 @@
+Run 
+	./compile.sh
+to build testbench
+
+
+Run
+	./testbench --stop-time=2000ns --wave=run.ghw
+
+to run the test and to produce a ghw waveform file.
