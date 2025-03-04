@@ -3,13 +3,13 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 
-entity testbench_4bit is
+entity testbench is
 	generic(
 		INPUT_WIDTH : integer := 8
 	);
 end entity;
 
-architecture struct of testbench_4bit is
+architecture struct of testbench is
 	component multiplier is
         generic (
 			INPUT_WIDTH: integer
@@ -60,7 +60,7 @@ begin
 
 				if (to_integer (unsigned(p)) /= (I * J)) then
 					error_flag <= '1';
-					assert false report "Error" severity error;
+					assert false report "Error at " & integer'image(I) & integer'image(J) severity error;
 				end if;
 			end loop;
 		end loop;

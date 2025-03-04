@@ -32,7 +32,100 @@ As an example,
 ```
 
 ## Second Part
-To convert it to VHDL, we will first convert the specification into RTL. 
+### Solution that uses provided adder
+Since the adder brings in a cycle delay in returning the correct value of the sum, we will need to tweak the RTL specification a bit to create a new state : `PRIME_STATE`
+
+```
+// Shift and subtract divider. 
+// Uses a single 9-bit subtractor. 
+// 
+// input start, a[7:0], b[7:0] 
+// output done, q[7:0] 
+// 
+// register ta[15:0] 
+// register t[7:0] 
+// registers counter[3:0] 
+// 
+// Default outs: 
+// done=0, q = 0 
+rst_state: 
+	if start then 
+		ta := a
+		counter := 0
+		t := 0
+		goto wait_state 
+	else 
+		goto rst_state
+	endif 
+
+prime_state: 
+	if(ta[0]) then 
+		// Prime 9-bit adder
+		main_adder_start := 1
+		main_adder_a := t[16:9]
+		main_adder_b := b
+		// We are allowed to do the shifting for the other stuff anyways
+		t[7:0] := t[8:1]
+	else 
+		t[16:0] := 0 & t[16:1]
+	endif  
+	// We also need to have the option to update the value of counter in the next state
+	counter_adder_start := 1
+	counter_adder_a := counter
+	counter_adder_b := 1
+	goto loop_state // Even if ta[0] = 0, we still need to update counter so we go to the loop_state
+
+loop_state:
+	// Now we have the updated values of both 
+	if (ta[0]) then
+		// Update the t-value
+		t[16:8] := main_adder_c
+	endif // Nothing else needs to be done
+	// We can now finally right-shift ta
+	ta[7:0] := 0 & ta[7:1]
+	if (counter == 8) then
+		goto done_state
+	else
+		counter := counter_adder_c
+		goto prime_state
+	endif
+		
+done_state: 
+	done = 1 
+	// t is visible at p  
+	if start then 
+		t := 0 
+		counter := 0 
+		ta := 0^8 & a 
+		goto loop 
+	else 
+		goto done_state 
+	endif 
+```
+This can be used to represent the control path's FSM as,
+```handdrawn-ink
+{
+	"versionAtEmbed": "0.3.3",
+	"filepath": "Ink/Drawing/2025.3.4 - 21.08pm.drawing",
+	"width": 500,
+	"aspectRatio": 1
+}
+```
+Let's now connect these transfers and predicates to the datapath as well
+```handdrawn-ink
+{
+	"versionAtEmbed": "0.3.3",
+	"filepath": "Ink/Drawing/2025.3.4 - 21.14pm.drawing",
+	"width": 500,
+	"aspectRatio": 1
+}
+```
+Now we can use this intuition to develop our multiplier.
+		**Note** : I have used generics while making the multiplier to make the `INPUT_WIDTH` variable. This helped in the later questions.
+### Deprecated Solution
+>[!failure] Why is this deprecated?
+>This RTL specification assumes that the adder is able to provide the addition in the same cycle as operands. In reality, the adder provided along with this assignment has a delay of 1 clock cycle. Thus I needed to introduce an additional state `WAIT_STATE` in my implementation. Given below is the solution assuming that we are dealing with an adder without delay.
+>**Note** : Implementation submitted along with the assignment uses the earlier solution.
 
 ```handdrawn-ink
 {
@@ -59,6 +152,9 @@ Now we can design the Datapath side's registers:
 With this, we can make the datapath as a component inside of our multiplier and write the VHDL script to simulate it.
 
 ## Third Part
+>[!fail] Issues with the adder
+>The adder provided does not work when the sum of both inputs > 255 i.e. when we need 9-bits to show the true value. Therefore the requisite changes were made to both the testbench and the output port of the adder (`unsigned('0' & A) + unsigned('0' & B)` is the new output value). Moreover, in an effort to generalise the components, a generic called `INPUT_WIDTH` has also been used instead of hardcoding it to be a 8-bit adder only.
+
 To check all $2^{16}$ combinations, we just need to scan over all $2^8$ cases for both `a` and `b`. This means we scan from `0 to 255` for both for-loops.
 
 After modifying the testbench from `sample/testbench.vhdl` to check for multiplication instead of addition, we can see that it yields,

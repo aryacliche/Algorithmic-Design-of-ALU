@@ -4,6 +4,9 @@ use ieee.numeric_std.all;
 
 
 entity testbench is
+	generic (
+		INPUT_WIDTH: integer := 8
+	);
 end entity;
 
 
@@ -15,16 +18,16 @@ architecture struct of testbench is
 		port (
 			start: in std_logic; 
 			done: out std_logic;
-			A,B: in std_logic_vector (7 downto 0);
-			C:   out std_logic_vector(7 downto 0);
+			A,B: in std_logic_vector (INPUT_WIDTH - 1 downto 0);
+			C:   out std_logic_vector(INPUT_WIDTH downto 0);
 			clk: in std_logic;
 			reset: in std_logic);
 	end component;
 
 	signal start: std_logic; 
 	signal done:  std_logic;
-	signal A,B:   std_logic_vector (7 downto 0);
-	signal C:     std_logic_vector(7 downto 0);
+	signal A,B:   std_logic_vector (INPUT_WIDTH - 1 downto 0);
+	signal C:     std_logic_vector(INPUT_WIDTH downto 0);
 	signal clk:   std_logic := '0';
 	signal reset: std_logic := '1';
 
@@ -40,10 +43,10 @@ begin
 		wait until clk = '1';
 		reset <= '0';
 
-		for I in 0 to 7 loop
-			A <= std_logic_vector(to_unsigned(I, 8));
-			for J in 0 to 7 loop
-				B <= std_logic_vector(to_unsigned(J, 8));
+		for I in 0 to 2**INPUT_WIDTH - 1 loop
+			A <= std_logic_vector(to_unsigned(I, INPUT_WIDTH));
+			for J in 0 to 2**INPUT_WIDTH - 1 loop
+				B <= std_logic_vector(to_unsigned(J, INPUT_WIDTH));
 				wait until clk = '1';
 				start <= '1';
 

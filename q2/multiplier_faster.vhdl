@@ -51,7 +51,7 @@ begin
 	left_shift_2 <= aHbL & std_logic_vector(to_unsigned(0, INPUT_WIDTH / 2));
 	left_shift_3 <= aLbH & std_logic_vector(to_unsigned(0, INPUT_WIDTH / 2));
     temp_sum1 <= std_logic_vector(unsigned('0' & left_shift_1) + unsigned((INPUT_WIDTH  + 1=>'0') & aLbL));
-    temp_sum2 <= std_logic_vector(unsigned((INPUT_WIDTH / 2 + 1 => '0') & left_shift_2) + unsigned((INPUT_WIDTH / 2 + 1=>'0') & left_shift_3));
+	temp_sum2 <= std_logic_vector(unsigned(((INPUT_WIDTH / 2) + 1 => '0') & left_shift_2) + unsigned(((INPUT_WIDTH / 2) + 1=>'0') & left_shift_3));
     temp_sum3 <= std_logic_vector(unsigned('0' & temp_sum1) + unsigned('0' & temp_sum2));
     
 	p <= temp_sum3	(2 * INPUT_WIDTH - 1 downto 0);
