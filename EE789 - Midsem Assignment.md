@@ -288,7 +288,7 @@ done_state:
 - Also note that we are using a realistic subtractor (by changing the `Add2` entity slightly). Thus there is a cycle delay between us giving the operands and receiving the correct values.
 ## Second Part
 The VHDL Code is attached along with this pdf. Luckily the FSM of control path for divider is very similar to that of the multiplier thus I didn't need to change that by a large margin. Hence no diagram attached for the same.
-		## Third Part
+					## Third Part
 Testbench was configured to expect $q = 0$ in case $b=0$.
 ```shell
 testbench.vhdl:75:25:@13762565ns:(assertion note): Success.
@@ -303,7 +303,7 @@ However, we can use some shortcuts :
 2. The largest $y\in\mathbb{Z}$ which follows $y^2$ smaller than $x$ will also follow: $$y^2 \leq x< (y+1)^2$$Thus we need to compute $p'=x-y^2$ and $q'=p'- 2y - 1$. If the carry bit in $p'$ is `0` and carry bit in $q'$ is `1` (since compulsorily $x$ should be smaller than $(y+1)^2$), we can be sure we have found the real value of $y$.
 
 ## Second Part
-RTL Code for this ckt (while using the 8-bit multiplier as a slave thread) is,
+RTL Code for this ckt (while using the 4-bit multiplier as a slave thread) is,
 ```
 // Multiplier based square-root calculator. 
 // Uses a single 4-bit multiplier and a couple adders/subtractors
@@ -318,15 +318,17 @@ RTL Code for this ckt (while using the 8-bit multiplier as a slave thread) is,
 // Default outs: 
 // done=0, y = 0 
 
-multiplier(a=>t[3:0], b=>t[3:0], start=>start_mul, p=>ty, done=>done_mul)
-p_ = x - ty
-q_ = (t << 1 + 1) - p_
+multiplier(a=>mul_a, b=>mul_b, start=>start_mul, p=>ty, done=>done_mul)
+subtractor
+adder
 
 rst: 
 	if start then 
 		t := 5b'6
 		upper := 4b'15
 		lower := 4b'0
+		mul_a := t
+		mul_b := t
 		start_mul := '1'
 		goto multiply_state 
 	else 
@@ -335,30 +337,71 @@ rst:
 
 multiply_state:
 	if (done_mul = '1') then
-		goto loop_state
+		subtractor_a := x
+		subtractor_b := ty
+		subtractor_start := 1
+		goto preloop_state
 	else
 		goto multiply_state
 	endif
 
-loop_state: 
-	if (p_ >= 0 AND q_ >= 0) then 
+preloop_state:   // This state exists purely to find the value of q_
+	subtractor_diff := p_ // To preserve the value of p_
+	if (subtractor_diff >= 0) then
+		subtractor_a := (t << 1 & 1) // this is equivalent to 2t + 1
+		subtractor_b := subtractor_diff // we feed it back in
+		subtractor_start := 1
+		goto loop_state
+	
+	else // No point in finding q_ therefore we can save a cycle by skipping loop
+		adder_start := 1 // we are updating value of upper or lower
+		if (p_ >= 0) then // we are at a value of t lower than y
+			adder_a := t
+			adder_b := 1
+		else // we are at a value of t higher than y
+			adder_a := t
+			adder_b := -1
+		goto postloop1_state
+
+loop_state: // Now we have valid values of both p_ and q_
+	subtractor_start := 0
+	q_ := subtractor_diff
+	if (subtractor_diff >= 0) then // That is, both p_ and q_ >= 0 (since you can only reach loop_state if p_ >= 0)
 		// Found the correct value
 		start_mul := '0'
 		goto done_state
-	elsif (p_ >= 0)
-		// we are at a value of t lower than y
-		lower := t + 1
-		t := (t + 1 + upper) >> 2
-		start_mul := '1'
-		goto multiply_state
 	else
-		// we are at a value of t higher than y
-		upper := t - 1
-		t := (lower + t - 1) >> 1 
-		start_mul := '1'
-		goto multiply_state
-	endif 
+		adder_start := 1 // we are updating value of upper or lower
+		if (p_ >= 0) then // we are at a value of t lower than y
+			adder_a := t
+			adder_b := 1
+		else // we are at a value of t higher than y
+			adder_a := t
+			adder_b := -1
+		goto postloop1_state
+	endif
 	
+postloop1_state: // in this state, we update the value of t
+	adder_start := 1
+	if (p_ >= 0) then // we are at a value of t lower than y
+		lower := adder_c
+		adder_a := upper
+		adder_b := adder_c
+	else // we are at a value of t higher than y
+		upper := adder_c
+		adder_a := lower
+		adder_b := adder_c
+	endif
+	goto postloop2_state
+
+postloop2_state: // finally we update the value of t
+	adder_start := 0
+	t := adder_c >> 1
+	start_mul := '1'
+	mul_a := adder_c >> 1
+	mul_b := adder_c >> 1
+	goto multiply_state
+
 done_state: 
 	done := 1 
 	y := t[3:0]
@@ -373,6 +416,17 @@ done_state:
 		goto done_state 
 	endif
 ```
-Thus we will have two transfers `t0` (initialising the state and priming the multiplier) and `t1` (using the multiplier output to decide the next set of multiplier inputs) as well as two predicates `p0` (multiplier outputs `done=1`) and `p1` (we have found the correct value of `t` and `y` can now faithfully be interpret as `t`)
+- Yes, there are a lot of states in this RTL. The reason for that is simply that I wanted to reduce the number of components being used while still using binary search-based technique for finding the correct value of the squareroot.
+- The predicates are as follows,
+	- `p0` to signify completion of multiplication
+	- `p1` to signify `p_ >= 0`
+	- `p2` to signify `q_ >= 0`
+- The transfers are as follows,
+	- `t0` to prime the multiplier and `t`, `upper`, `lower` initially
+	- `t1` to prime the subtractor for calculation of `p_`
+	- `t2` to prime the subtractor for calculation of `q_`
+	- `t3` to prime the adder for calculation of `upper` or `lower`
+	- `t4` to prime the adder for calculation of `t`
+	- `t5` to update `t` and prime multiplier
 ## Third Part
 I used two 2-bit multipliers to make up the 4-bit multiplier using the master-slave configuration.

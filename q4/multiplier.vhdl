@@ -7,7 +7,7 @@ use work.all;
 
 entity multiplier is
 	generic (
-		INPUT_WIDTH: integer := 2
+		INPUT_WIDTH: integer := 8
 	);
 	port (
 		clk, reset: in std_logic;
@@ -24,20 +24,20 @@ architecture RTL_based of multiplier is
 			COUNTER_WIDTH: integer
 		);
 		port (
-			clk, t0, t1: in std_logic;
+			clk, t0, t1, t2: in std_logic;
 			p0: out std_logic; 
 			a,b: in std_logic_vector (INPUT_WIDTH - 1 downto 0);
 			p:   out std_logic_vector(2 * INPUT_WIDTH - 1 downto 0)
 		);
 	end component datapath_multiplier;
 	
-	type states is (DONE_STATE, LOOP_STATE, RST_STATE);
+	type states is (DONE_STATE, LOOP_STATE, RST_STATE, PRIME_STATE);
 	signal curr_state: states;
-	signal t0, t1: std_logic; -- transfers
+	signal t0, t1, t2: std_logic; -- transfers
 	signal p0 : std_logic; -- predicate
 
 begin
-	datapath_main : datapath_multiplier generic map (INPUT_WIDTH, 1 + integer(ceil(log2(real(INPUT_WIDTH))))) port map(clk, t0, t1, p0, a, b, p);
+	datapath_main : datapath_multiplier generic map (INPUT_WIDTH, 1 + integer(ceil(log2(real(INPUT_WIDTH))))) port map(clk, t0, t1, t2, p0, a, b, p);
 
 	process(clk, reset, p0, start, curr_state)
 		variable next_state : states;
@@ -46,37 +46,44 @@ begin
 		case curr_state is
 			when RST_STATE =>
 				done_var := '0';
+				t1 <= '0';
+				t2 <= '0';
 				if(start = '1') then
 					t0 <= '1';
-					t1 <= '0';
-					next_state := LOOP_STATE;
+					next_state := PRIME_STATE;
 				else
 					t0 <= '0';
-					t1 <= '0';
 					next_state := RST_STATE;
 				end if;
 
+			when PRIME_STATE => -- in this state you are just waiting for the adder to calculate the sum
+				t0 <= '0';
+				t1 <= '1';
+				t2 <= '0';	
+				next_state := LOOP_STATE;
+
 			when LOOP_STATE =>
-				t1 <= '1';	
+				t0 <= '0';
+				t1 <= '0';	
 				if (p0 = '0') then
-					t0 <= '0';
+					t2 <= '1';
 					done_var := '0';
-					next_state := LOOP_STATE;
+					next_state := PRIME_STATE;
 				else
-					t0 <= '0';
+					t2 <= '0';
 					done_var := '1';
 					next_state := DONE_STATE;
 				end if;
 
 			when DONE_STATE =>
+				t1 <= '0';
+				t2 <= '0';
 				if (start = '1') then
 					t0 <= '1';
-					t1 <= '0';
 					done_var := '0';
-					next_state := LOOP_STATE;
+					next_state := PRIME_STATE;
 				else
 					t0 <= '0';
-					t1 <= '0';
 					done_var := '1';
 					next_state := DONE_STATE;
 				end if;

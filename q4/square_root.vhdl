@@ -24,19 +24,19 @@ architecture RTL_based of square_root is
 		);
 		port (
 			clk, t0, t1: in std_logic;
-			p0: out std_logic; 
-			a,b: in std_logic_vector (INPUT_WIDTH - 1 downto 0);
-			p:   out std_logic_vector(2 * INPUT_WIDTH - 1 downto 0)
+			p0, p1: out std_logic; 
+			x: in std_logic_vector (INPUT_WIDTH - 1 downto 0);
+			y: out std_logic_vector(INPUT_WIDTH / 2 - 1 downto 0)
 		);
 	end component datapath_squareroot;
 	
-	type states is (DONE_STATE, MULTIPLY_STATE, LOOP_STATE, RST_STATE);
+	type states is (DONE_STATE, MULTIPLY_STATE, LOOP_STATE, RST_STATE, PRELOOP_STATE, POSTLOOP1_STATE, POSTLOOP2_STATE);
 	signal curr_state: states;
 	signal t0, t1 : std_logic; -- transfers
 	signal p0, p1 : std_logic; -- predicate
 
 begin
-	datapath_main : datapath_squareroot generic map (INPUT_WIDTH) port map(clk, t0, t1, p0, a, b, p);
+	datapath_main : datapath_squareroot generic map (INPUT_WIDTH) port map(clk, t0, t1, t2, t3, t4, t5, p0, p1, p2, x, y);
 
 	process(clk, reset, p0, start, curr_state)
 		variable next_state : states;
@@ -47,7 +47,7 @@ begin
 				done_var := '0';
 				t1 <= '0';
 				if(start = '1') then
-					t0 <= '1';
+					t0 <= '1'; -- start multiplying
 					next_state := MULTIPLY_STATE;
 				else
 					t0 <= '0';
@@ -56,24 +56,59 @@ begin
 
 			when MULTIPLY_STATE =>
 				t0 <= '0';
-				t1 <= '0';	
+				t1 <= '1';	
 				done_var := '0';
 				if (p0 = '1') then
-					next_state := LOOP_STATE;
+					next_state := PRELOOP_STATE;
 				else
 					next_state := MULTIPLY_STATE;
 				end if;
 
+			when PRELOOP_STATE =>
+				t0 <= '0';
+				t1 <= '0';
+				done_var := '0';
+				if (p1 = '1') then
+					t2 <= '1';
+					t3 <= '0';
+					next_state := LOOP_STATE;
+				else
+					t2 <= '0';
+					t3 <= '1';
+					next_state := POSTLOOP1_STATE;
+				end if;
+
 			when LOOP_STATE =>
 				t0 <= '0';
-				t1 <= '1';	
-				if (p1 = '1') then
+				t1 <= '0';
+				t2 <= '0';
+				if (p2 = '1') then
+					t3 <= '0';
 					done_var := '1';
 					next_state := DONE_STATE;
 				else
+					t3 <= '1';
 					done_var := '0';
-					next_state := MULTIPLY_STATE;
+					next_state := POSTLOOP1_STATE;
 				end if;
+
+			when POSTLOOP1_STATE =>
+				t0 <= '0';
+				t1 <= '0';
+				t2 <= '0';
+				t4 <= '1';
+				t5 <= '0';
+				done_var := '0';
+				next_state := POSTLOOP2_STATE;
+
+			when POSTLOOP2_STATE =>
+				t0 <= '0';
+				t1 <= '0';
+				t2 <= '0';
+				t4 <= '0';	
+				t5 <= '1';
+				done_var := '0';	
+				next_state := MULTIPLY_STATE;
 
 			when DONE_STATE =>
 				t1 <= '0';
