@@ -157,10 +157,10 @@ With this, we can make the datapath as a component inside of our multiplier and 
 
 To check all $2^{16}$ combinations, we just need to scan over all $2^8$ cases for both `a` and `b`. This means we scan from `0 to 255` for both for-loops.
 
-After modifying the testbench from `sample/testbench.vhdl` to check for multiplication instead of addition, we can see that it yields,
+After modifying the testbench from `sample/testbench.vhdl` to check for multiplication instead of addition (and also making some small changes to it so that we can be sure that the value of `a` and `b` is constant throughout the operation of the multiplier), we can see that it yields,
 ```sh
-testbench.vhdl:60:25:@7208975ns:(assertion note): Success.
-ghdl:info: simulation stopped by --stop-time @10ms
+testbench.vhdl:69:25:@13762565ns:(assertion note): Success.
+ghdl:info: simulation stopped by --stop-time @20ms
 ```
 
 # Question 2
@@ -205,9 +205,10 @@ The VHDL code is attached along with this pdf file.
 ## Third Part
 Testing with the testbench yields
 ```sh
-testbench.vhdl:60:25:@4587535ns:(assertion note): Success.
+testbench.vhdl:69:25:@8519685ns:(assertion note): Success.
+ghdl:info: simulation stopped by --stop-time @20ms
 ```
-This is significantly faster than the earlier result (whose testing lasted `7208975ns`).
+This is significantly faster than the earlier result (whose testing lasted `13762565ns`).
 
 # Question 3
 ## First Part
@@ -242,10 +243,18 @@ rst:
 		goto rst 
 	endif 
 
-loop: 
-	if(ta[14:7] - b >= 0) then 
-		// Use 9-bit subtractor + left-shifter
-		ta[15:8] := ta[14:7] - b
+prime: 
+	main_subtractor_start := 1
+	main_subtractor_a := ta[14:7]
+	main_subtractor_b := b
+	
+	counter_adder_start := 1
+	counter_adder_a := counter
+	counter_adder_b := 1
+
+loop:
+	if (main_subtractor_diff >= 0) then
+		ta[15:8] := main_subtractor_diff
 		// simple left-shift
 		ta[7:0] := ta[6:0] & 0
 		// left-shift quotient
@@ -254,11 +263,12 @@ loop:
 		// shift left 
 		ta[15:0] := ta[14:0] & 0
 		t := (t[7:1] & 0) if not b_is_zero else 0
-	endif  
+	endif 
+
 	if (counter == 7 OR b_is_zero = '1') then 
 		goto done_state 
 	else 
-		counter := (counter + 1) 
+		counter := counter_adder_out
 		goto loop 
 	endif 
 	
@@ -274,11 +284,16 @@ done_state:
 		goto done_state 
 	endif 
 ```
-Notice that we have incorporated `b_is_zero` signal to deal with the case when `b` is provided as `0`. It allows the ckt to go through the usual 8 iterations of `loop` (to ensure that the divider has consistent timing across all stages)
+- Notice that we have incorporated `b_is_zero` signal to deal with the case when `b` is provided as `0`. It allows the ckt to go through the usual 8 iterations of `loop` (to ensure that the divider has consistent timing across all stages)
+- Also note that we are using a realistic subtractor (by changing the `Add2` entity slightly). Thus there is a cycle delay between us giving the operands and receiving the correct values.
 ## Second Part
-The VHDL Code is attached along with this pdf.
-## Third Part
+The VHDL Code is attached along with this pdf. Luckily the FSM of control path for divider is very similar to that of the multiplier thus I didn't need to change that by a large margin. Hence no diagram attached for the same.
+		## Third Part
 Testbench was configured to expect $q = 0$ in case $b=0$.
+```shell
+testbench.vhdl:75:25:@13762565ns:(assertion note): Success.
+ghdl:info: simulation stopped by --stop-time @20ms
+```
 # Question 4
 ## First Part
 Since the squarer-root calculator has to work for 8-bit values of $x$, the maximum value of $y_\max=\sqrt{\max(x)} < \sqrt{256} < 16$. Since $y\in\mathbb{Z}$, $y_\max = 15$. Thus to find the value of square-root of $x$, we need to ideally calculate every value of $y^2$ from $y=0$ to $y=15$.

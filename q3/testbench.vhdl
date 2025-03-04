@@ -3,23 +3,30 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use ieee.math_real.all;
 
+
 entity testbench is
+	generic(
+		INPUT_WIDTH : integer := 8
+	);
 end entity;
 
 architecture struct of testbench is
-	component divider_8bit is
-        port (
+	component divider is
+        generic (
+			INPUT_WIDTH: integer
+		);
+		port (
             clk, reset: in std_logic;
             start: in std_logic; 
-            a,b: in std_logic_vector (7 downto 0);
-            q:   out std_logic_vector(7 downto 0);
+            a,b: in std_logic_vector (INPUT_WIDTH - 1 downto 0);
+            q:   out std_logic_vector(INPUT_WIDTH - 1 downto 0);
             done: out std_logic);
-    end component divider_8bit;
+    end component divider;
 
 	signal start: std_logic; 
 	signal done:  std_logic;
-	signal a,b:   std_logic_vector (7 downto 0);
-	signal q:     std_logic_vector(7 downto 0);
+	signal a,b:   std_logic_vector (INPUT_WIDTH - 1 downto 0);
+	signal q:     std_logic_vector(INPUT_WIDTH - 1 downto 0);
 	signal clk:   std_logic := '0';
 	signal reset: std_logic := '1';
 
@@ -31,18 +38,16 @@ begin
 	clk <= not clk after 5 ns;
 
 	process
-variable I_max : integer := 255;
-		variable J_max : integer := 255;
 	begin
 		wait until clk = '1';
 		reset <= '0';
 
-		for I in 0 to I_max loop
-			for J in 0 to J_max loop
-				a <= std_logic_vector(to_unsigned(I, 8));
-				b <= std_logic_vector(to_unsigned(J, 8));
+	for I in 0 to (2**INPUT_WIDTH - 1) loop
+			a <= std_logic_vector(to_unsigned(I, INPUT_WIDTH));
+			for J in 0 to (2**INPUT_WIDTH - 1) loop
+				b <= std_logic_vector(to_unsigned(J, INPUT_WIDTH));
+				wait until clk = '1';
 				start <= '1';
-				-- wait until clk = '1';	
 				wait until clk = '0';
 				wait until clk = '1';
 				start <= '0';
@@ -53,7 +58,7 @@ variable I_max : integer := 255;
 						exit;
 					end if;
 				end loop;
-				
+
 				if (J = 0) then
 					if (to_integer(unsigned(q)) /= 0) then
 						error_flag <= '1';
@@ -65,19 +70,19 @@ variable I_max : integer := 255;
 				end if;
 			end loop;
 		end loop;
-
-		-- for the last iteration
-		while true loop
-			wait until clk = '1';
-			if (done = '1') then
-				exit;
-			end if;
-		end loop;
+	
+		if(error_flag = '0') then
+			assert false report "Success." severity note;
+		else 
+			assert false report "Failure." severity note;
+		end if;	
 
 		wait;
 	end process;
 
-	dut: divider_8bit port map (start => start, done => done,
+	dut: divider 	
+		generic map (INPUT_WIDTH => INPUT_WIDTH)
+		port map (start => start, done => done,
 				a => a, b => b, q => q,
 					clk => clk, reset => reset);
 
