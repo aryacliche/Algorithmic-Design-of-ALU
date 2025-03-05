@@ -56,7 +56,7 @@ begin
 				end if;
 			end loop;
 
-			if (NOT ((to_integer(unsigned(y)) ** 2 <= I) AND (to_integer(unsigned(y) + 1) ** 2 > I))) then
+if (NOT ((to_integer(unsigned('0' & y)) ** 2 <= I) AND (to_integer(unsigned('0' & y) + 1) ** 2 > I))) then
 				error_flag <= '1';
 				assert false report "Error at " & integer'image(I) severity error;
 			end if;

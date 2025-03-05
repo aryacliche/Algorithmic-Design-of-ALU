@@ -22,15 +22,8 @@ $$\text{\texttt{p}} = \left((\text{\texttt{b}}<<8)>>7-X\right)>>1$$
 $$\Rightarrow\text{\texttt{p}} = \text{\texttt{b}}<<X$$
 Thus the algorithm is equivalent!
 As an example,
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.3",
-	"filepath": "Ink/Drawing/2025.2.13 - 13.01pm.drawing",
-	"width": 758,
-	"aspectRatio": 1.0648092901521187
-}
-```
-
+![[Pasted image 20250305071504.png]]
+	
 ## Second Part
 ### Solution that uses provided adder
 Since the adder brings in a cycle delay in returning the correct value of the sum, we will need to tweak the RTL specification a bit to create a new state : `PRIME_STATE`
@@ -103,52 +96,25 @@ done_state:
 	endif 
 ```
 This can be used to represent the control path's FSM as,
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.3",
-	"filepath": "Ink/Drawing/2025.3.4 - 21.08pm.drawing",
-	"width": 500,
-	"aspectRatio": 1
-}
-```
+![[Pasted image 20250305071244.png]]
 Let's now connect these transfers and predicates to the datapath as well
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.3",
-	"filepath": "Ink/Drawing/2025.3.4 - 21.14pm.drawing",
-	"width": 500,
-	"aspectRatio": 1
-}
-```
+![[Pasted image 20250305071313.png]]
+
 Now we can use this intuition to develop our multiplier.
-		**Note** : I have used generics while making the multiplier to make the `INPUT_WIDTH` variable. This helped in the later questions.
+**Note** : I have used generics while making the multiplier to make the `INPUT_WIDTH` variable. This helped in the later questions.
 ### Deprecated Solution
 >[!failure] Why is this deprecated?
 >This RTL specification assumes that the adder is able to provide the addition in the same cycle as operands. In reality, the adder provided along with this assignment has a delay of 1 clock cycle. Thus I needed to introduce an additional state `WAIT_STATE` in my implementation. Given below is the solution assuming that we are dealing with an adder without delay.
 >**Note** : Implementation submitted along with the assignment uses the earlier solution.
 
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.3",
-	"filepath": "Ink/Drawing/2025.2.14 - 13.26pm.drawing",
-	"width": 580,
-	"aspectRatio": 1.5144220962017054
-}
-```
+![[Pasted image 20250305071335.png]]
 The predicates are:
 $$\text{P}_0 : \text{\texttt{counter == 8}}$$
 The transfers are:
 $$\text{t}_0 : \text{\texttt{t[16:0] = 0, counter = 0; ta = a}}$$
 $$\text{t}_1 : \text{Right shift based on \texttt{ta[0]; counter++}}$$
 Now we can design the Datapath side's registers:
-```handdrawn-ink
-{
-	"versionAtEmbed": "0.3.3",
-	"filepath": "Ink/Drawing/2025.2.14 - 13.34pm.drawing",
-	"width": 832,
-	"aspectRatio": 1.5674162038425907
-}
-```
+![[Pasted image 20250305071352.png]]
 With this, we can make the datapath as a component inside of our multiplier and write the VHDL script to simulate it.
 
 ## Third Part
@@ -411,8 +377,13 @@ done_state:
 		goto done_state 
 	endif
 ```
-		- Yes, there are a lot of states in this RTL. The reason for that is simply that I wanted to reduce the number of components being used while still using binary search-based technique for finding the correct value of the squareroot. I use the adder, subtractor twice for every iteration of the loop. 
+- Yes, there are a lot of states in this RTL. The reason for that is simply that I wanted to reduce the number of components being used while still using binary search-based technique for finding the correct value of the squareroot. I use the adder, subtractor twice for every iteration of the loop. 
 - Since there are a lot more states in this ckt, I have not used an RTL-based method of division into separate control and datapaths.
 - I used two 2-bit multipliers to make up the 4-bit multiplier using the master-slave configuration.
 ## Third Part
 I got the following output on running the testbench,
+```shell
+testbench.vhdl:66:25:@98795ns:(assertion note): Success.
+ghdl:info: simulation stopped by --stop-time @500us
+```
+

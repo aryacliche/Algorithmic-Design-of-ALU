@@ -137,7 +137,7 @@ begin
 				done_var := '0';
 				if (sub_diff(INPUT_WIDTH + 1) = '0') then -- i.e. we have a non-negative value
 					sub_a <= sub_diff(INPUT_WIDTH downto 0);
-					sub_b <= (INPUT_WIDTH / 2 - 1 downto 0 => '0') & t & '1'; -- Same as 2 * t + 1
+					sub_b <= (INPUT_WIDTH / 2 - 1 downto 0 => '0') & t & '1'; -- Same as 2 * t + 1	
 					start_s1 <= '1';
 					start_a1 <= '0';
 					next_state := LOOP_STATE;
@@ -157,14 +157,10 @@ begin
 					start_a1 <= '0';
 					done_var := '1';
 					next_state := DONE_STATE;
-				else
+				else -- (t + 1)^2 is smaller than x -- we need to increase t i.e. push lower bound up
 					start_a1 <= '1';
 					add_a <= t;
-					if (x_minus_tsquare(INPUT_WIDTH) = '1') then		
-						add_b <= std_logic_vector(to_signed(-1, INPUT_WIDTH / 2));
-					else
-						add_b <= std_logic_vector(to_unsigned(1, INPUT_WIDTH / 2));
-					end if;
+					add_b <= std_logic_vector(to_unsigned(1, INPUT_WIDTH / 2));
 					done_var := '0';
 					next_state := POSTLOOP1_STATE;
 				end if;
@@ -173,11 +169,11 @@ begin
 				start_a1 <= '1';
 				start_s1 <= '0';
 				start_m <= '0';
-				if (x_minus_tsquare(INPUT_WIDTH) = '1') then
+				if (x_minus_tsquare(INPUT_WIDTH) = '1') then -- upper bound is too high (we came here directly from preloop)
 					upper <= add_c(INPUT_WIDTH / 2 - 1 downto 0);
 					add_a <= lower;
 					add_b <= add_c(INPUT_WIDTH / 2 - 1 downto 0);
-				else
+				else -- lower bound is too low (we came here from loop	)
 					lower <= add_c(INPUT_WIDTH / 2 - 1 downto 0);
 					add_a <= upper;
 					add_b <= add_c(INPUT_WIDTH / 2 - 1 downto 0);
@@ -186,12 +182,12 @@ begin
 				next_state := POSTLOOP2_STATE;
 
 			when POSTLOOP2_STATE =>
-				start_a1 <= '1';
+				start_a1 <= '0';
 				start_s1 <= '0';
 				start_m <= '1';
-				mul_a <= '0' & add_c(INPUT_WIDTH / 2 - 1 downto 1);
-				mul_b <= '0' & add_c(INPUT_WIDTH / 2 - 1 downto 1);
-				t <= '0' & add_c(INPUT_WIDTH / 2 - 1 downto 1);
+				mul_a <= add_c(INPUT_WIDTH / 2 downto 1);
+				mul_b <= add_c(INPUT_WIDTH / 2 downto 1);
+				t <= add_c(INPUT_WIDTH / 2 downto 1);
 				done_var := '0';	
 				next_state := MULTIPLY_STATE;
 
