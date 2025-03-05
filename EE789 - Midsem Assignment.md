@@ -2,6 +2,11 @@
 >**Name** : Arya Vishe
 >**Roll Number** : 21D070018
 
+# How to run?
+Simply run 
+`chmod +x runscript.sh`
+`./runscript q1 500` to simulate the first question's testbench for 500us
+
 # Question 1
 ## First Part
 Powers of 2 are represented as a single `SET` bit out of 8 (in this case) bits overall. Thus verifying for the case where both operands are powers of 2 denotes verifying it for the case when all but 1 bit per number are `RESET`.
