@@ -299,7 +299,7 @@ ghdl:info: simulation stopped by --stop-time @20ms
 Since the squarer-root calculator has to work for 8-bit values of $x$, the maximum value of $y_\max=\sqrt{\max(x)} < \sqrt{256} < 16$. Since $y\in\mathbb{Z}$, $y_\max = 15$. Thus to find the value of square-root of $x$, we need to ideally calculate every value of $y^2$ from $y=0$ to $y=15$.
 
 However, we can use some shortcuts :
-1. Since $\left\{i^2\right\}_{i = 0}^{15}$ is an ordered list, we can utilise binary search i.e. start with $y=6$ and utilise comparators
+1. Since $\left\{i^2\right\}_{i = 0}^{15}$ is an ordered list, we can utilise binary search i.e. start with $y=7$ and utilise comparators
 2. The largest $y\in\mathbb{Z}$ which follows $y^2$ smaller than $x$ will also follow: $$y^2 \leq x< (y+1)^2$$Thus we need to compute $p'=x-y^2$ and $q'=p'- 2y - 1$. If the carry bit in $p'$ is `0` and carry bit in $q'$ is `1` (since compulsorily $x$ should be smaller than $(y+1)^2$), we can be sure we have found the real value of $y$.
 
 ## Second Part
@@ -346,33 +346,29 @@ multiply_state:
 	endif
 
 preloop_state:   // This state exists purely to find the value of q_
-	subtractor_diff := p_ // To preserve the value of p_
+	x_minus_tsquare := subtractor_diff  // To preserve the value of x_minus_tsquare
 	if (subtractor_diff >= 0) then
-		subtractor_a := (t << 1 & 1) // this is equivalent to 2t + 1
-		subtractor_b := subtractor_diff // we feed it back in
+		subtractor_a := subtractor_diff // we feed it back in
+		subtractor_b := (t << 1 & 1) // this is equivalent to 2t + 1
 		subtractor_start := 1
 		goto loop_state
 	
 	else // No point in finding q_ therefore we can save a cycle by skipping loop
-		adder_start := 1 // we are updating value of upper or lower
-		if (p_ >= 0) then // we are at a value of t lower than y
-			adder_a := t
-			adder_b := 1
-		else // we are at a value of t higher than y
-			adder_a := t
-			adder_b := -1
+		adder_start := 1 // we are updating value of upper since ty > x
+		adder_a := t
+		adder_b := -1
 		goto postloop1_state
 
-loop_state: // Now we have valid values of both p_ and q_
+loop_state: // Now we have valid values of both x_minus_tsquare and q_
 	subtractor_start := 0
 	q_ := subtractor_diff
-	if (subtractor_diff >= 0) then // That is, both p_ and q_ >= 0 (since you can only reach loop_state if p_ >= 0)
+		if (subtractor_diff < 0) then // That is, both x_minus_tsquare >= 0 and q_ < 0 (since you can only reach loop_state if x_minus_tsquare >= 0)
 		// Found the correct value
 		start_mul := '0'
 		goto done_state
 	else
 		adder_start := 1 // we are updating value of upper or lower
-		if (p_ >= 0) then // we are at a value of t lower than y
+		if (x_minus_tsquare >= 0) then // we are at a value of t lower than y
 			adder_a := t
 			adder_b := 1
 		else // we are at a value of t higher than y
@@ -383,7 +379,7 @@ loop_state: // Now we have valid values of both p_ and q_
 	
 postloop1_state: // in this state, we update the value of t
 	adder_start := 1
-	if (p_ >= 0) then // we are at a value of t lower than y
+	if (x_minus_tsquare >= 0) then // we are at a value of t lower than y
 		lower := adder_c
 		adder_a := upper
 		adder_b := adder_c
@@ -406,7 +402,6 @@ done_state:
 	done := 1 
 	y := t[3:0]
 	if start then 
-		ta := x
 		t := 5b'6
 		upper := 4b'15
 		lower := 4b'0
@@ -416,17 +411,8 @@ done_state:
 		goto done_state 
 	endif
 ```
-- Yes, there are a lot of states in this RTL. The reason for that is simply that I wanted to reduce the number of components being used while still using binary search-based technique for finding the correct value of the squareroot.
-- The predicates are as follows,
-	- `p0` to signify completion of multiplication
-	- `p1` to signify `p_ >= 0`
-	- `p2` to signify `q_ >= 0`
-- The transfers are as follows,
-	- `t0` to prime the multiplier and `t`, `upper`, `lower` initially
-	- `t1` to prime the subtractor for calculation of `p_`
-	- `t2` to prime the subtractor for calculation of `q_`
-	- `t3` to prime the adder for calculation of `upper` or `lower`
-	- `t4` to prime the adder for calculation of `t`
-	- `t5` to update `t` and prime multiplier
+		- Yes, there are a lot of states in this RTL. The reason for that is simply that I wanted to reduce the number of components being used while still using binary search-based technique for finding the correct value of the squareroot. I use the adder, subtractor twice for every iteration of the loop. 
+- Since there are a lot more states in this ckt, I have not used an RTL-based method of division into separate control and datapaths.
+- I used two 2-bit multipliers to make up the 4-bit multiplier using the master-slave configuration.
 ## Third Part
-I used two 2-bit multipliers to make up the 4-bit multiplier using the master-slave configuration.
+I got the following output on running the testbench,

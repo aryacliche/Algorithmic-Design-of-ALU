@@ -37,15 +37,15 @@ architecture fork_RTL_based of multiplier_faster is
 	signal left_shift_2, left_shift_3 : std_logic_vector(3 * INPUT_WIDTH / 2 - 1 downto 0);
     signal temp_sum1, temp_sum2 : std_logic_vector(2 * INPUT_WIDTH downto 0);
     signal temp_sum3 : std_logic_vector(2 * INPUT_WIDTH + 1 downto 0);
-	signal done_temp : std_logic_vector(INPUT_WIDTH / 2 - 1 downto 0);
-    signal start_temp : std_logic_vector(INPUT_WIDTH / 2 - 1 downto 0);
+	signal done_temp : std_logic_vector(3 downto 0);
+    signal start_temp : std_logic_vector(3 downto 0);
     signal aHbH, aHbL, aLbH, aLbL : std_logic_vector(INPUT_WIDTH - 1 downto 0);
     
 begin
 	slave_multiplier_0 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(0), a(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), b(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), aHbH, done_temp(0)); -- a_H, b_H
     slave_multiplier_1 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(1), a(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), b(INPUT_WIDTH / 2 - 1 downto 0), aHbL, done_temp(1)); -- a_H, b_L
     slave_multiplier_2 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(2), a(INPUT_WIDTH / 2 - 1	 downto 0), b(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), aLbH, done_temp(2)); -- a_L, b_H
-    slave_multiplier_3 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(3), a(INPUT_WIDTH / 2 - 1	 downto 0), b(INPUT_WIDTH / 2 - 1 downto 0), aLbL, done_temp(INPUT_WIDTH / 2 - 1)); -- a_L, b_L
+slave_multiplier_3 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(3), a(INPUT_WIDTH / 2 - 1	 downto 0), b(INPUT_WIDTH / 2 - 1 downto 0), aLbL, done_temp(3)); -- a_L, b_L
 
 	left_shift_1 <= aHbH & std_logic_vector(to_unsigned(0, INPUT_WIDTH));
 	left_shift_2 <= aHbL & std_logic_vector(to_unsigned(0, INPUT_WIDTH / 2));
