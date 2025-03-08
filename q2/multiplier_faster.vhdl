@@ -49,9 +49,11 @@ architecture fork_RTL_based of multiplier_faster is
 	signal done_temp : std_logic_vector(INPUT_WIDTH / 2 - 1 downto 0);
     signal start_temp : std_logic_vector(INPUT_WIDTH / 2 - 1 downto 0);
     signal aHbH, aHbL, aLbH, aLbL : std_logic_vector(INPUT_WIDTH - 1 downto 0);
+    signal adder_A, adder_B : std_logic_vector (INPUT_WIDTH - 1 downto 0);
+    signal adder_C : std_logic_vector (INPUT_WIDTH downto 0);
 	signal beta : std_logic_vector(INPUT_WIDTH downto 0);
 	signal gamma : std_logic_vector(INPUT_WIDTH - 1 downto 0);
-	signal done_slave : std_logic;
+	signal done_slaves, adder_done, adder_start, adder_Cin : std_logic;
     
 begin
 	slave_multiplier_0 : multiplier generic map(INPUT_WIDTH / 2) port map(clk, reset, start_temp(0), a(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), b(INPUT_WIDTH - 1 downto INPUT_WIDTH / 2), aHbH, done_temp(0)); -- a_H, b_H
@@ -83,7 +85,7 @@ begin
 				when WAIT_STATE =>
 					done_var := '0';
 					start_temp <= (others => '0');  -- While we are waiting for the result to come in, don't let anyone start the next line.
-					if (done = '1') then  -- All of the forked proceesses were able to finish their products
+					if (done_slaves = '1') then  -- All of the forked proceesses were able to finish their products
 						next_state := Add1_DONE_STATE;
 						adder_A <= aLbH;
 						adder_B <= aHbL;
@@ -137,11 +139,9 @@ begin
 
 				when DONE_STATE =>
 					adder_start <= '0';
-					if (adder_done = '0') -- we need to wait before we proclaim being right
-						done_var := '0';
-					else if (start = '1') then
+					if (start = '1') then
 						start_temp <= (others => '1');
-						done_var := '1';
+						done_var := '0';
 						next_state := WAIT_STATE;
 					else
 						start_temp <= (others => '0');
