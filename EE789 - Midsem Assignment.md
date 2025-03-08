@@ -2,6 +2,7 @@
 >**Name** : Arya Vishe
 >**Roll Number** : 21D070018
 
+$\newcommand{\t}{\text}$
 # How to run?
 Simply run 
 `chmod +x runscript.sh`
@@ -106,7 +107,9 @@ Let's now connect these transfers and predicates to the datapath as well
 ![[Pasted image 20250305071313.png]]
 
 Now we can use this intuition to develop our multiplier.
-**Note** : I have used generics while making the multiplier to make the `INPUT_WIDTH` variable. This helped in the later questions.
+**Note** : 
+- I have used generics while making the multiplier to make the `INPUT_WIDTH` variable. This helped in the later questions.
+- Read the deprecated solution sub-section ahead to get an idea of the transfers and predicates.
 ### Deprecated Solution
 >[!failure] Why is this deprecated?
 >This RTL specification assumes that the adder is able to provide the addition in the same cycle as operands. In reality, the adder provided along with this assignment has a delay of 1 clock cycle. Thus I needed to introduce an additional state `WAIT_STATE` in my implementation. Given below is the solution assuming that we are dealing with an adder without delay.
@@ -118,7 +121,7 @@ $$\text{P}_0 : \text{\texttt{counter == 8}}$$
 The transfers are:
 $$\text{t}_0 : \text{\texttt{t[16:0] = 0, counter = 0; ta = a}}$$
 $$\text{t}_1 : \text{Right shift based on \texttt{ta[0]; counter++}}$$
-Now we can design the Datapath side's registers:
+Now we can design the Datapath side's registers
 ![[Pasted image 20250305071352.png]]
 With this, we can make the datapath as a component inside of our multiplier and write the VHDL script to simulate it.
 
@@ -142,7 +145,75 @@ $$b = b_L + 2^4 \times b_H$$
 Thus $$a\times b = 2^8\times (a_H \times b_H) + 2^4 (a_L\times b_H + a_H \times b_L) + a_L\times b_L$$
 Equivalently,
 $$a\times b = (a_H \cdot b_H)\text{\texttt{<<8}} + (a_L\cdot b_H + a_H \cdot b_L)\text{\texttt{<<4}} + a_L\cdot b_L$$
+> Note that $\alpha(\text{15 downto 0}) = (a_H \cdot b_H)\text{\texttt{<<8}} + a_L\cdot b_L = (a_H \cdot b_H) \& a_L\cdot b_L$ thus we don't need to make that addition. 
+> Thus finally, we will need to do 3 additions using 8-bit adders with carry,
+> - **Add1** : $\beta(\text{8 downto 0}) = a_L\cdot b_H + a_H \cdot b_L + 0$
+> - **Add2** : $(c_1\:\&\:\gamma(\text{7 downto 0})) = \alpha(\t{7 downto 0}) + \beta(\t{3 downto 0}) \t{\texttt{<< 4}} + 0$ 
+> - **Add3** : $(c_2\:\&\:\delta(\text{7 downto 0})) = \alpha(\t{15 downto 8}) + \beta(\t{8 downto 4}) \t{\texttt{<< 8}} + c_1$
+> Final product will then be $(\delta\:\&\:\gamma)$. We know intuitively that $c_2$ will always be `0` since product of 2 8-bit operands will always be 16-bit only.
+
 ## First Part
+We will use 4 multipliers as slave threads (each with start and done signals as `start_{i}` and `done_{i}` respectively.) 
+### Solution that uses the provided Adder
+In this solution, I have tweaked the provided adder to create `Add2_with_Carry` to create the final multiplier. With that, this is the RTL code for the master thread (the RTL code for the slave threads are already used in the last question.)
+- The `RST`, `DONE` states are self-explanatory
+- Master is in `WAIT` state till **all** slaves are done with their computation, after which it primes **Add1** and transitions to `Add1_DONE`.
+-  During `Add1_DONE`, adder is primed again for **Add2** and it transitions to `Add2_DONE`
+- During `Add2_DONE`, adder is primed again for **Add3** and it transitions to `DONE`
+```pseudo
+thread faster_8_multiplier { // 
+done_slaves = done_0 AND done_1 AND done_2 AND done_3
+RST :   if (start) then
+			start_0 = start_1 = start_2 = start_3 =  1
+			goto WAIT
+		else
+			start_0 = start_1 = start_2 = start_3 =  0
+			goto RST
+		endif		
+WAIT :  start_0 = start_1 = start_2 = start_3 =  0 // in case one of them ends their operation early, they should wait to synchronise
+		if (done_slaves)
+			adder_a := aLbH
+			adder_b := aHbL
+			adder_cin := '0'
+			adder_start := '1'
+			goto Add1_DONE
+		else 
+			goto WAIT
+		endif
+Add1_DONE:
+		if (done_adder)
+			beta := adder_out
+			adder_a := adder_out(3 downto 0) << 4
+			adder_b := aLbL
+			adder_cin := '0'
+			adder_start := '1'
+			goto Add2_DONE
+		else 
+			goto Add1_DONE
+		endif
+
+Add2_DONE:
+		if (done_adder)
+			gamma := adder_out(7 downto 0)
+			adder_a := beta(8 downto 4)
+			adder_b := aHbH
+			adder_cin := adder_out(8)
+			adder_start := '1'
+			goto DONE
+		else 
+			goto Add2_DONE
+		endif
+
+DONE :  if start then
+			start_0 = start_1 = start_2 = start_3 =  1
+			goto WAIT
+		else:
+			start_0 = start_1 = start_2 = start_3 =  0
+			goto DONE
+		endif;
+} 
+```
+### Deprecated Solution
 The RTL Code for the Master will be as follows,
 ```pseudo
 thread faster_8_multiplier {
@@ -224,7 +295,9 @@ prime:
 	counter_adder_b := 1
 
 loop:
-	if (main_subtractor_diff >= 0) then
+	if (! (counter_adder_done AND main_subtractor)) // We are waiting for the counter and subtractor to update
+		goto loop
+	else if (main_subtractor_diff >= 0) then
 		ta[15:8] := main_subtractor_diff
 		// simple left-shift
 		ta[7:0] := ta[6:0] & 0
@@ -259,7 +332,7 @@ done_state:
 - Also note that we are using a realistic subtractor (by changing the `Add2` entity slightly). Thus there is a cycle delay between us giving the operands and receiving the correct values.
 ## Second Part
 The VHDL Code is attached along with this pdf. Luckily the FSM of control path for divider is very similar to that of the multiplier thus I didn't need to change that by a large margin. Hence no diagram attached for the same.
-					## Third Part
+## Third Part
 Testbench was configured to expect $q = 0$ in case $b=0$.
 ```shell
 testbench.vhdl:75:25:@13762565ns:(assertion note): Success.
@@ -316,15 +389,17 @@ multiply_state:
 		goto multiply_state
 	endif
 
-preloop_state:   // This state exists purely to find the value of q_
+preloop_state:   // This state exists purely to find the value of x_minus_tsquare
 	x_minus_tsquare := subtractor_diff  // To preserve the value of x_minus_tsquare
-	if (subtractor_diff >= 0) then
+	if (! subtractor_done)
+		goto preloop_state
+	else if (subtractor_diff >= 0) then
 		subtractor_a := subtractor_diff // we feed it back in
 		subtractor_b := (t << 1 & 1) // this is equivalent to 2t + 1
 		subtractor_start := 1
 		goto loop_state
 	
-	else // No point in finding q_ therefore we can save a cycle by skipping loop
+	else // No point in finding x_minus_ therefore we can save a cycle by skipping loop
 		adder_start := 1 // we are updating value of upper since ty > x
 		adder_a := t
 		adder_b := -1
@@ -332,8 +407,10 @@ preloop_state:   // This state exists purely to find the value of q_
 
 loop_state: // Now we have valid values of both x_minus_tsquare and q_
 	subtractor_start := 0
-	q_ := subtractor_diff
-		if (subtractor_diff < 0) then // That is, both x_minus_tsquare >= 0 and q_ < 0 (since you can only reach loop_state if x_minus_tsquare >= 0)
+	x_minus_tsquare := subtractor_diff
+	if (! subtractor_done)
+		goto loop_state
+	else if (subtractor_diff < 0) then // That is, both x_minus_tsquare >= 0 and x_minus_tsquare < 0 (since you can only reach loop_state if x_minus_tsquare >= 0)
 		// Found the correct value
 		start_mul := '0'
 		goto done_state
