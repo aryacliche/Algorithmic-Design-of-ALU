@@ -23,7 +23,7 @@ begin
 	process(clk, reset, fsm_state, start, A, B)
 		variable next_fsm_state_var : Add2_with_carryState;
 		variable done_var : std_logic;
-		variable next_C_var : std_logic_vector(INPUT_WIDTH downto 0);
+		variable temp_var, next_C_var : std_logic_vector(INPUT_WIDTH downto 0);
 	begin
 		done_var := '0';
 		next_fsm_state_var := fsm_state;
@@ -32,13 +32,23 @@ begin
 			when IDLE_STATE =>
 				if(start = '1') then
 					next_fsm_state_var := DONE_STATE;
-					next_C_var := std_logic_vector(unsigned('0' & A) + unsigned('0' & B) + to_unsigned(INPUT_WIDTH + 1, C_in));
+					temp_var := std_logic_vector(unsigned('0' & A) + unsigned('0' & B));
+					if (Cin = '1') then
+						next_C_var := std_logic_vector(unsigned(temp_var) + 1);
+					else 
+						next_C_var := temp_var;
+					end if;
 				end if;
 			when DONE_STATE =>
 				done_var := '1';
 				if(start = '1') then
 					next_fsm_state_var := DONE_STATE;
-					next_C_var := std_logic_vector(unsigned('0' & A) + unsigned('0' & B) + to_unsigned(INPUT_WIDTH + 1, C_in));
+					temp_var := std_logic_vector(unsigned('0' & A) + unsigned('0' & B));
+					if (Cin = '1') then
+						next_C_var := std_logic_vector(unsigned(temp_var) + 1);
+					else 
+						next_C_var := temp_var;
+					end if;
 				else
 					next_fsm_state_var := IDLE_STATE;
 				end if;
