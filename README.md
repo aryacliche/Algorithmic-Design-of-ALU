@@ -1,12 +1,21 @@
+# Before you begin
 >[!cite] Author Details
 >**Name** : Arya Vishe
 >**Roll Number** : 21D070018
 
-$\newcommand{\t}{\text}$
-# How to run?
+## How to run?
 Simply run 
-`chmod +x runscript.sh`
-`./runscript q1 500` to simulate the first question's testbench for 500us
+```shell
+chmod +x runscript.sh
+./runscript q1 500
+```
+to simulate the first question's testbench for 500us. (syntax : `./runscript q<question_number> <time-in-us>`)
+
+## Other notes
+1. This markdown file was used to generate the `README.pdf` so both have identical content.
+2. I used Obsidian to make this markdown file so some of the syntax will not render properly on non-Obsidian markdown viewers. In that case, just read the pdf.
+
+$\newcommand{\t}{\text}$
 
 # Question 1
 ## First Part
@@ -26,6 +35,7 @@ Where $X,Y\in\{0,1,\ldots,7\}$. We will only look at the different conditions fo
 Final answer `p` is finally
 $$\text{\texttt{p}} = \left((\text{\texttt{b}}<<8)>>7-X\right)>>1$$
 $$\Rightarrow\text{\texttt{p}} = \text{\texttt{b}}<<X$$
+
 Thus the algorithm is equivalent!
 As an example,
 ![[Pasted image 20250305071504.png]]
