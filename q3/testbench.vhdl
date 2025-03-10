@@ -35,7 +35,7 @@ architecture struct of testbench is
 begin
 	
 	-- clk gen.
-	clk <= not clk after 5 ns;
+	clk <= not clk after 1 ns;
 
 	process
 	begin

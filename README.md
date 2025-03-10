@@ -15,6 +15,7 @@ to simulate the first question's testbench for 500us. (syntax : `./runscript q<q
 1. This markdown file was used to generate the `README.pdf` so both have identical content.
 2. I used Obsidian to make this markdown file so some of the syntax will not render properly on non-Obsidian markdown viewers. In that case, just read the pdf.
 3. Each folder contains screenshots of gtkwave for testbench simulation (`testbench_output.ps`)
+4. Screenshots are also attached at the end of this README file (in the last section).
 $\newcommand{\t}{\text}$
 $\newcommand{\tt}{\texttt}$
 # Question 1
@@ -346,8 +347,8 @@ The VHDL Code is attached along with this pdf. Luckily the FSM of control path f
 ## Third Part
 Testbench was configured to expect $q = 0$ in case $b=0$.
 ```shell
-testbench.vhdl:75:25:@13762565ns:(assertion note): Success.
-ghdl:info: simulation stopped by --stop-time @20ms
+testbench.vhdl:75:25:@2752513ns:(assertion note): Success.
+./testbench:info: simulation stopped by --stop-time @4ms
 ```
 # Question 4
 ## First Part
@@ -476,7 +477,16 @@ done_state:
 ## Third Part
 I got the following output on running the testbench,
 ```shell
-testbench.vhdl:66:25:@98795ns:(assertion note): Success.
-ghdl:info: simulation stopped by --stop-time @500us
+testbench.vhdl:66:25:@19759ns:(assertion note): Success.
+./testbench:info: simulation stopped by --stop-time @2ms
 ```
 
+# Screenshots
+## Question 1
+![[q1/testbench_output.png]]
+## Question 2
+![[q2/testbench_output.png]]
+## Question 3
+![[q3/testbench_output.png]]
+## Question 4
+![[q4/testbench_output.png]]
