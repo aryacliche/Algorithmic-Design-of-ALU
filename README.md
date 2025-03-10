@@ -14,9 +14,9 @@ to simulate the first question's testbench for 500us. (syntax : `./runscript q<q
 ## Other notes
 1. This markdown file was used to generate the `README.pdf` so both have identical content.
 2. I used Obsidian to make this markdown file so some of the syntax will not render properly on non-Obsidian markdown viewers. In that case, just read the pdf.
-
+3. Each folder contains screenshots of gtkwave for testbench simulation (`testbench_output.ps`)
 $\newcommand{\t}{\text}$
-
+$\newcommand{\tt}{\texttt}$
 # Question 1
 ## First Part
 Powers of 2 are represented as a single `SET` bit out of 8 (in this case) bits overall. Thus verifying for the case where both operands are powers of 2 denotes verifying it for the case when all but 1 bit per number are `RESET`.
@@ -33,13 +33,12 @@ Where $X,Y\in\{0,1,\ldots,7\}$. We will only look at the different conditions fo
 4. Note that the counter actually runs for 9 iterations (from `0` to `8`) thus we right-shift once for that.
 
 Final answer `p` is finally
-$$\text{\texttt{p}} = \left((\text{\texttt{b}}<<8)>>7-X\right)>>1$$
+$$\text{\texttt{p}} = \left((\text{\texttt{b<<8}})\t{\texttt{>>7}}-X\right)\t{\texttt{>>1}}$$
 $$\Rightarrow\text{\texttt{p}} = \text{\texttt{b}}<<X$$
 
 Thus the algorithm is equivalent!
 As an example,
-![[Pasted image 20250305071504.png]]
-	
+![[first.png]]
 ## Second Part
 ### Solution that uses provided adder
 Since the adder brings in a cycle delay in returning the correct value of the sum, we will need to tweak the RTL specification a bit to create a new state : `PRIME_STATE`
@@ -112,9 +111,9 @@ done_state:
 	endif 
 ```
 This can be used to represent the control path's FSM as,
-![[Pasted image 20250305071244.png]]
+![[second.png]]
 Let's now connect these transfers and predicates to the datapath as well
-![[Pasted image 20250305071313.png]]
+![[third.png]]
 
 Now we can use this intuition to develop our multiplier.
 **Note** : 
@@ -125,14 +124,14 @@ Now we can use this intuition to develop our multiplier.
 >This RTL specification assumes that the adder is able to provide the addition in the same cycle as operands. In reality, the adder provided along with this assignment has a delay of 1 clock cycle. Thus I needed to introduce an additional state `WAIT_STATE` in my implementation. Given below is the solution assuming that we are dealing with an adder without delay.
 >**Note** : Implementation submitted along with the assignment uses the earlier solution.
 
-![[Pasted image 20250305071335.png]]
+![[fourth.png]]
 The predicates are:
 $$\text{P}_0 : \text{\texttt{counter == 8}}$$
 The transfers are:
 $$\text{t}_0 : \text{\texttt{t[16:0] = 0, counter = 0; ta = a}}$$
 $$\text{t}_1 : \text{Right shift based on \texttt{ta[0]; counter++}}$$
 Now we can design the Datapath side's registers
-![[Pasted image 20250305071352.png]]
+![[fifth.png]]
 With this, we can make the datapath as a component inside of our multiplier and write the VHDL script to simulate it.
 
 ## Third Part
@@ -143,8 +142,8 @@ To check all $2^{16}$ combinations, we just need to scan over all $2^8$ cases fo
 
 After modifying the testbench from `sample/testbench.vhdl` to check for multiplication instead of addition (and also making some small changes to it so that we can be sure that the value of `a` and `b` is constant throughout the operation of the multiplier), we can see that it yields,
 ```sh
-testbench.vhdl:69:25:@13762565ns:(assertion note): Success.
-ghdl:info: simulation stopped by --stop-time @20ms
+testbench.vhdl:69:25:@2752513ns:(assertion note): Success.
+./testbench:info: simulation stopped by --stop-time @4ms
 ```
 
 # Question 2
@@ -257,15 +256,17 @@ The VHDL code is attached along with this pdf file.
 ## Third Part
 Testing with the testbench yields
 ```sh
-testbench.vhdl:69:25:@8519685ns:(assertion note): Success.
-ghdl:info: simulation stopped by --stop-time @20ms
+testbench.vhdl:69:25:@2228225ns:(assertion note): Success.
+./testbench:info: simulation stopped by --stop-time @4ms
 ```
-This is significantly faster than the earlier result (whose testing lasted `13762565ns`).
+This is faster than the earlier result (whose testing lasted `2752513ns`). (It could have been faster if we didn't have such cheap adders 😠)
 
 # Question 3
 ## First Part
 To implement a shift-and-subtract model for calculation of division, we will use the same algorithm as given here
-![[Pasted image 20250226190838.png | Hand-based calculation of dvision]]
+![[sixth.png]]
+Above is the hand-written version of the algorithm.
+
 Instead of using a register to sample the first few bits of the dividend, we will simply extend the MSBs of the dividend and left-shift after each step.
 
 The RTL code for this is,
